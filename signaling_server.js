@@ -8,12 +8,14 @@ wss.on('connection', (ws) => {
         if (data.role === 'pc') pc = ws;
         if (data.role === 'controller') controller = ws;
 
-        // بمجرد أن يتصل أي طرف، إذا كان الآخر موجوداً، نرسل إشارة "انطلق"
-        if (pc && controller) {
-            pc.send(JSON.stringify({ type: "peer_ready" }));
-            controller.send(JSON.stringify({ type: "peer_ready" }));
+        // إرسال إشارة الاستعداد فقط عندما يتوفر الطرفان
+        if (pc && controller && data.role) {
+            const readyMsg = JSON.stringify({ type: "peer_ready" });
+            pc.send(readyMsg);
+            controller.send(readyMsg);
         }
 
+        // تمرير الرسائل (Offer/Answer/Candidate)
         if (data.role === 'pc' && controller) controller.send(message.toString());
         if (data.role === 'controller' && pc) pc.send(message.toString());
     });
