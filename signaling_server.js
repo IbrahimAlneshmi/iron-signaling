@@ -5,7 +5,7 @@ const wss = new WebSocket.Server({ port });
 let pcSocket = null;
 let controllerSocket = null;
 
-// مخزن مؤقت لحفظ الـ Offer في حال أرسله الـ Viewer ولم يكن الـ Agent متصلاً بعد
+// مخزن مؤقت لحفظ الـ Offer والـ Candidates لضمان عدم ضياعها
 let pendingOffer = null;
 let pendingCandidates = [];
 
@@ -20,12 +20,12 @@ wss.on('connection', (ws) => {
             return; 
         }
 
-        // 1. تسجيل الأدوار وحفظ الاتصال
+        // تسجيل الأدوار وحفظ الاتصال
         if (data.role === 'pc') {
             pcSocket = ws;
             console.log("🤖 Agent (PC) Registered and Ready.");
 
-            // 🔥 ميزة ذكية: إذا كان هناك Offer أو Candidates معلقة بانتظار الـ Agent، نرسلها له فوراً بمجرد دخوله
+            // إذا كان هناك Offer معلق بانتظار الـ Agent، نرسله له فوراً
             if (pendingOffer) {
                 console.log("⚡ Delivering cached Offer to the newly connected Agent...");
                 pcSocket.send(JSON.stringify(pendingOffer));
@@ -40,13 +40,12 @@ wss.on('connection', (ws) => {
             console.log("📺 Viewer (Controller) Registered and Ready.");
         }
 
-        // 2. منطق توجيه الرسائل الذكي
-        // إذا كانت الرسالة قادمة من الـ Viewer (Controller)
+        // منطق توجيه الرسائل الذكي
         if (data.role === 'controller') {
             if (pcSocket && pcSocket.readyState === WebSocket.OPEN) {
                 pcSocket.send(message.toString());
             } else {
-                // إذا لم يكن الـ Agent متصلاً، نخزن الـ offer والـ candidates مؤقتاً في الذاكرة
+                // إذا لم يكن الـ Agent متصلاً بعد، نخزن البيانات مؤقتاً
                 if (data.type === 'offer') {
                     pendingOffer = data;
                     console.log("⏳ Agent is offline. Offer cached in memory.");
@@ -55,7 +54,6 @@ wss.on('connection', (ws) => {
                 }
             }
         }
-        // إذا كانت الرسالة قادمة من الـ Agent (PC) وتتضمن الـ Answer أو Candidates
         else if (data.role === 'pc') {
             if (controllerSocket && controllerSocket.readyState === WebSocket.OPEN) {
                 controllerSocket.send(message.toString());
@@ -63,23 +61,20 @@ wss.on('connection', (ws) => {
         }
     });
 
-    // 3. معالجة انقطاع الاتصال وتنظيف الذاكرة
     ws.on('close', () => {
         if (ws === pcSocket) { 
             pcSocket = null; 
             console.log("❌ Agent disconnected");
-            // إعلام الـ Viewer إن كان متصلاً ليقوم بتهيئة نفسه للاستماع مجدداً
             if (controllerSocket && controllerSocket.readyState === WebSocket.OPEN) {
                 controllerSocket.send(JSON.stringify({ type: "peer_disconnected" }));
             }
         }
         if (ws === controllerSocket) { 
             controllerSocket = null; 
-            pendingOffer = null; // تصفير الكاش عند خروج المتحكم
+            pendingOffer = null; 
             pendingCandidates = [];
             console.log("❌ Viewer disconnected");
             
-            // إعلام الـ Agent ليعيد تصفير الـ P2P ويبدأ الانتظار من جديد
             if (pcSocket && pcSocket.readyState === WebSocket.OPEN) {
                 pcSocket.send(JSON.stringify({ type: "peer_disconnected" }));
             }
