@@ -1,15 +1,13 @@
 {
-  "name": "server",
+  "name": "itg-signaling-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Signaling server for remote desktop",
   "main": "signaling_server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node signaling_server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "ws": "^8.21.0"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
   }
 }
