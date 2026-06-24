@@ -6,33 +6,33 @@ const port = process.env.PORT || 10000;
 
 console.log("Initializing MeshCentral Config for Render on port: " + port);
 
-// التأكد من وجود مجلد البيانات محلياً حتى لا ينهار السيرفر
+// التأكد من وجود مجلد البيانات محلياً لمنع الأخطاء
 const dataPath = path.join(__dirname, 'meshcentral-data');
 if (!fs.existsSync(dataPath)){
     fs.mkdirSync(dataPath, { recursive: true });
 }
 
-// استدعاء ملف السيرفر الداخلي مباشرة من الحزمة وتمرير الإعدادات كـ Object
-// هذا يتخطى سطر الأوامر تماماً ويجبره على الاستمرار في العمل خلف Proxy
 try {
-    const meshcentral = require('meshcentral/meshcentral.js');
+    // استدعاء مكتبة meshcentral الحقيقية
+    const meshcentral = require('meshcentral');
     
-    // تشغيل السيرفر عن طريق حقن الإعدادات في الكائن الداخلي لـ MeshCentral
-    const args = {
-        port: port,
-        aliasport: 443,
-        redirport: null,
-        agentsport: null,
-        trustedproxy: "127.0.0.1",
-        tlsoffload: true,
-        datapath: dataPath // إجبار السيرفر على حفظ البيانات في المجلد الحالي للمشروع
+    // الإعدادات المطلوبة للتشغيل
+    const config = {
+        settings: {
+            port: port,
+            aliasport: 443,
+            redirport: null,
+            agentsport: null,
+            trustedproxy: "127.0.0.1",
+            tlsoffload: true,
+            datapath: dataPath
+        }
     };
 
-    console.log("Launching MeshCentral core...");
+    console.log("Launching MeshCentral core via direct function call...");
     
-    // إنشاء نسخة وتشغيلها بأسلوب النواة (Core-level launch)
-    const obj = new meshcentral.MeshCentralServer();
-    obj.start(args);
+    // تشغيل السيرفر مباشرة كدالة وتمرير الإعدادات بداخلها (بدون كلمة new)
+    const obj = meshcentral(config);
 
 } catch (error) {
     console.error("Critical error during MeshCentral launch:", error);
