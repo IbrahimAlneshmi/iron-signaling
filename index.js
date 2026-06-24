@@ -1,24 +1,40 @@
 const path = require('path');
-
-// جلب مسار ملف التشغيل الرئيسي لـ MeshCentral من داخل الحزم المثبتة
-const meshCentralPath = path.join(__dirname, 'node_modules', 'meshcentral', 'meshcentral.js');
+const fs = require('fs');
 
 // Render تفرض منفذاً متغيرًا عبر process.env.PORT
 const port = process.env.PORT || 10000;
 
-console.log("Starting MeshCentral Server directly via file path on port: " + port);
+console.log("Initializing MeshCentral Config for Render on port: " + port);
 
-// تجهيز الأوامر (Arguments) لتمريرها للسيرفر كأنه يعمل من الـ Terminal
-process.argv = [
-    process.argv[0], // مسار تشغيل الـ node
-    meshCentralPath, // مسار ملف meshcentral.js
-    "--port", port,
-    "--aliasport", "443",          // المنفذ الخارجي لـ Render المشفر تلقائياً
-    "--redirport", "null",         // إلغاء منفذ تحويل HTTP
-    "--agentsport", "null",        // دمج حركة مرور الأجهزة مع نفس منفذ السيرفر
-    "--trustedproxy", "127.0.0.1", // الثقة في الـ Load Balancer الخاص بـ Render
-    "--tlsoffload"                 // إخبار السيرفر أن فك تشفير الـ SSL يتم خارجياً
-];
+// التأكد من وجود مجلد البيانات محلياً حتى لا ينهار السيرفر
+const dataPath = path.join(__dirname, 'meshcentral-data');
+if (!fs.existsSync(dataPath)){
+    fs.mkdirSync(dataPath, { recursive: true });
+}
 
-// استدعاء وتشغيل الملف مباشرة، ليقوم بقراءة الـ process.argv التي جهزناها في الأعلى
-require(meshCentralPath);
+// استدعاء ملف السيرفر الداخلي مباشرة من الحزمة وتمرير الإعدادات كـ Object
+// هذا يتخطى سطر الأوامر تماماً ويجبره على الاستمرار في العمل خلف Proxy
+try {
+    const meshcentral = require('meshcentral/meshcentral.js');
+    
+    // تشغيل السيرفر عن طريق حقن الإعدادات في الكائن الداخلي لـ MeshCentral
+    const args = {
+        port: port,
+        aliasport: 443,
+        redirport: null,
+        agentsport: null,
+        trustedproxy: "127.0.0.1",
+        tlsoffload: true,
+        datapath: dataPath // إجبار السيرفر على حفظ البيانات في المجلد الحالي للمشروع
+    };
+
+    console.log("Launching MeshCentral core...");
+    
+    // إنشاء نسخة وتشغيلها بأسلوب النواة (Core-level launch)
+    const obj = new meshcentral.MeshCentralServer();
+    obj.start(args);
+
+} catch (error) {
+    console.error("Critical error during MeshCentral launch:", error);
+    process.exit(1);
+}
