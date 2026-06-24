@@ -1,13 +1,12 @@
 {
-  "name": "itg-signaling-server",
+  "name": "itg-meshcentral-server",
   "version": "1.0.0",
-  "description": "Signaling server for remote desktop",
-  "main": "signaling_server.js",
+  "description": "MeshCentral Server on Render",
+  "main": "index.js",
   "scripts": {
-    "start": "node signaling_server.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "meshcentral": "^1.1.22"
   }
 }
